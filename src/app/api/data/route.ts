@@ -5,14 +5,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    const { db, user } = await requireOwner();
+    const { db, ownerId } = await requireOwner();
     async function all(table: string, order: string) {
       const rows: Record<string, unknown>[] = [];
       for (let start = 0; ; start += 500) {
         const { data, error } = await db
           .from(table)
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", ownerId)
           .order(order, { ascending: false })
           .order("id")
           .range(start, start + 499);
@@ -39,12 +39,12 @@ export async function GET() {
       db
         .from("profiles")
         .select("display_name,timezone,default_currency")
-        .eq("id", user.id)
+        .eq("id", ownerId)
         .single(),
       db
         .from("notification_preferences")
         .select("daily_reminder_enabled,reminder_time,timezone,push_enabled")
-        .eq("user_id", user.id)
+        .eq("user_id", ownerId)
         .single(),
     ]);
     if (profileResult.error || preferencesResult.error)

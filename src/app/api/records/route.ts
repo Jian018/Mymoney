@@ -11,7 +11,7 @@ const tables = {
 export async function POST(request: Request) {
   try {
     checkOrigin(request);
-    const { db, user } = await requireOwner();
+    const { db, ownerId } = await requireOwner();
     const parsed = recordSchema.safeParse(await request.json());
     if (!parsed.success)
       throw new Error(parsed.error.issues.map((i) => i.message).join(" "));
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         .upsert(
           {
             ...fields,
-            user_id: user.id,
+            user_id: ownerId,
             completed_at: new Date().toISOString(),
           },
           { onConflict: "user_id,checkin_date" },
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       const result = await db
         .from("notification_preferences")
         .update(fields)
-        .eq("user_id", user.id)
+        .eq("user_id", ownerId)
         .select("id")
         .single();
       if (result.error) throw new Error(result.error.message);
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       const result = await db
         .from("profiles")
         .update(fields)
-        .eq("id", user.id)
+        .eq("id", ownerId)
         .select("id")
         .single();
       if (result.error) throw new Error(result.error.message);
@@ -79,14 +79,14 @@ export async function POST(request: Request) {
       const inserted = await db
         .from("transactions")
         .upsert(
-          { ...fields, user_id: user.id },
+          { ...fields, user_id: ownerId },
           { onConflict: "user_id,request_id", ignoreDuplicates: true },
         );
       if (inserted.error) throw new Error(inserted.error.message);
       const saved = await db
         .from("transactions")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", ownerId)
         .eq("request_id", requestId)
         .single();
       if (saved.error) throw new Error(saved.error.message);
@@ -97,12 +97,12 @@ export async function POST(request: Request) {
           .from(tables[entity])
           .update(fields)
           .eq("id", id)
-          .eq("user_id", user.id)
+          .eq("user_id", ownerId)
           .select("id")
           .single()
       : await db
           .from(tables[entity])
-          .insert({ ...fields, user_id: user.id })
+          .insert({ ...fields, user_id: ownerId })
           .select("id")
           .single();
     if (result.error) throw new Error(result.error.message);
@@ -114,13 +114,13 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     checkOrigin(request);
-    const { db, user } = await requireOwner();
+    const { db, ownerId } = await requireOwner();
     const { entity, id } = deleteSchema.parse(await request.json());
     const result = await db
       .from(tables[entity])
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", ownerId)
       .select("id")
       .single();
     if (result.error) throw new Error(result.error.message);

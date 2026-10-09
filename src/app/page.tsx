@@ -1,14 +1,13 @@
-import { redirect } from "next/navigation";
-import { configured, requireOwner } from "@/lib/supabase/server";
+import { supabaseConfigured, requireOwner } from "@/lib/supabase/server";
 import MoneyApp from "@/components/money-app";
+import DeviceAccess from "@/components/device-access";
 export const dynamic = "force-dynamic";
 export default async function Page() {
-  if (!configured()) redirect("/login");
-  let email = "";
+  if (!supabaseConfigured()) return <DeviceAccess configured={false} />;
   try {
-    email = (await requireOwner()).user.email ?? "";
+    const { user } = await requireOwner();
+    return <MoneyApp deviceId={user.id} />;
   } catch {
-    redirect("/login");
+    return <DeviceAccess configured />;
   }
-  return <MoneyApp email={email} />;
 }

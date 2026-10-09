@@ -16,7 +16,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Windows PowerShell 用 `Copy-Item .env.example .env.local` 代替 `cp`。打开 http://localhost:3000。只有配置真实 Supabase 和唯一账号后才能登录。图标已包含在仓库；`npm run icons` 可以重新生成。
+Windows PowerShell 用 `Copy-Item .env.example .env.local` 代替 `cp`。打开 http://localhost:3000。没有邮箱、密码或 Google 登录页。首次批准设备后自动进入；未批准的设备不能查看账本。图标已包含在仓库；`npm run icons` 可以重新生成。
 
 ```bash
 npm run typecheck
@@ -25,30 +25,48 @@ npm run build
 npm start
 ```
 
-## 阶段 2：Supabase 数据库与唯一账号
+## 阶段 2：Supabase 与私人设备绑定
 
-1. 在 [Supabase](https://supabase.com/dashboard) 创建免费项目，区域选择接近新加坡的区域。数据库密码只保存在你自己的密码管理器。
-2. 在 Authentication → 配置/Sign In and Providers 中关闭 **Allow new users to sign up**（允许新用户注册）。保留 Email/Password 登录，关闭不需要的提供商。没有公开注册页面。
-3. Authentication → Users → Add user：手动创建你唯一的邮箱/密码账号，并确认邮箱（管理界面可选择自动确认）。不要把密码发到聊天或写入代码。
-4. SQL Editor 执行完整的 `supabase/migrations/001_initial.sql`，只执行一次。包含所有表、索引、约束、RLS 和金额文本视图。
-5. 复制 Users 中该账号的 **User UID**。打开 `supabase/setup-owner.sql`，将全零 UUID 换成你的 UUID，然后执行。插入唯一 owner 会自动建立 profile、通知偏好和 8 个默认分类；不会创建任何收支数据。
-6. Project Settings → API/Data API：取得项目 URL 和 publishable key。旧项目的 anon key 也可以用于 publishable 配置。不要混淆 service-role key。
-7. 设置 `.env.local`：
+此版本已移除 `/login` 和邮箱密码表单。使用 Supabase 匿名会话识别浏览器安装，并由你在 Supabase SQL Editor 手动批准。它是对浏览器会话的授权，不是不可复制的硬件身份。
 
-| 变量                                   | 用途                                   | 是否可在浏览器出现 |
-| -------------------------------------- | -------------------------------------- | ------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`             | 项目 HTTPS URL                         | 是                 |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | publishable 或旧 anon key，受 RLS 限制 | 是                 |
-| `ALLOWED_USER_ID`                      | 唯一账号 UUID，必须与 app_owner 一致   | 服务器读取         |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`         | Web Push 公钥                          | 是                 |
-| `VAPID_PRIVATE_KEY`                    | Web Push 私钥                          | **否**             |
-| `VAPID_SUBJECT`                        | `mailto:你的邮箱`                      | 服务器读取         |
-| `SUPABASE_SERVICE_ROLE_KEY`            | 仅每日任务使用，绕过 RLS               | **否**             |
-| `CRON_SECRET`                          | 长随机字符串，保护每日任务             | **否**             |
+1. 创建免费 Supabase 项目。SQL Editor 按顺序执行 `supabase/migrations/001_initial.sql` 和 `002_device_access.sql`，每个只执行一次。**如果你已经执行过 001，只执行 002，不要重复初始化。**
+2. 初次绑定期间，在 Authentication → Sign In / Providers 开启 **Allow anonymous sign-ins**，并允许创建新用户（Allow new users to sign up）。不需要 Google、Gmail、邮箱或密码；可以关闭 Email 和所有不需要的登录提供商。匿名会话没有财务访问权限，必须另行批准。
+3. 在 Project Settings / Connect 中取得项目 URL 和 publishable key。将这两项先填入 Vercel 的 `NEXT_PUBLIC_SUPABASE_URL` 和 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`，先部署。此时 `ALLOWED_USER_ID` 可以暂时留空，应用显示设备设置页，不公开任何账本数据。
+4. Safari 打开你的 HTTPS 域名 → 分享 → 添加到主屏幕。**从主屏幕图标启动后**点击 **Bind this device**，复制页面上的 Device ID。Safari 与主屏幕安装可能使用不同会话，因此先安装再绑定。
+5. 在 Supabase SQL Editor 打开 `supabase/setup-device.sql`，用刚复制的 Device ID 替换全零 UUID，执行。脚本自动初始化第一个私人账本和默认分类，或将设备授权到已有账本；不会删除或迁移已有财务记录。最后会返回 `ALLOWED_USER_ID`。
+6. 将返回的 `ALLOWED_USER_ID` 添加到 Vercel 环境变量，再重新部署。它是**账本拥有者**编号；更换设备时保持不变，不一定等于新设备编号。
+7. 回到主屏幕应用，点击 **I’ve approved this device · Check access** 或刷新。之后已批准且保有会话的安装直接进入应用。新增 MYR/SGD 记录后刷新，确认真实持久保存。
+8. 完成绑定后，可以关闭 **Allow new users to sign up**，减少未经批准设备创建匿名账号。已有会话继续使用；以后需要绑定新安装时临时重新开启。
 
-8. 重启本地服务，用手动创建的账号登录。新增 MYR/SGD 收支，在 Supabase Table Editor 确认持久保存。刷新页面后应仍存在。
+所有凭据只填写到你自己的本地 `.env.local` 或 Vercel 环境变量，不发送到聊天。没有公开的设备授权写入接口；浏览器不能自行修改 `authorized_devices`。
 
-数据库权限不仅检查 `auth.uid()`，还检查单行 `app_owner`。即使错误地开启了注册，其他账号仍不能访问财务表。预算只能关联该账号的支出分类；交易分类必须匹配账号和收支类型。金额使用 `NUMERIC(14,2)`，读取视图将金额转成文本，应用用 `BigInt` 分计算，避免 JSON 浮点误差。
+| 变量                                   | 用途                                                  | 是否可在浏览器出现 |
+| -------------------------------------- | ----------------------------------------------------- | ------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`             | 项目 HTTPS URL                                        | 是                 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | publishable 或旧 anon key，受 RLS 限制                | 是                 |
+| `ALLOWED_USER_ID`                      | setup-device.sql 返回的账本 owner UUID                | 服务器读取         |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`         | Web Push 公钥                                         | 是                 |
+| `VAPID_PRIVATE_KEY`                    | Web Push 私钥                                         | **否**             |
+| `VAPID_SUBJECT`                        | `mailto:你的邮箱`，仅是推送服务联系方式，不是应用登录 | 服务器读取         |
+| `SUPABASE_SERVICE_ROLE_KEY`            | 仅每日任务使用，绕过 RLS                              | **否**             |
+| `CRON_SECRET`                          | 长随机字符串，保护每日任务                            | **否**             |
+
+数据库 RLS 使用 `current_owner_id()` 将已批准的设备会话映射到单一 `app_owner`。所有财务记录继续保存账本 owner ID；未知设备和匿名未认证请求不能读取或修改。预算分类、交易类型和金额约束保持有效，金额仍用 `NUMERIC(14,2)` + `BigInt` 分计算。
+
+### 重装、会话丢失与撤销访问
+
+清除 Cookie、重装、换浏览器或会话失效后，旧匿名会话不能通过邮箱密码找回。临时允许匿名账号创建，用新安装生成 Device ID，再运行 `setup-device.sql` 批准新编号；原账本和 `ALLOWED_USER_ID` 保持不变。
+
+**不要删除 `app_owner.user_id` 指向的 Supabase Auth 用户**：它仍是账本的持久拥有者，删除会触发外键级联。会话丢失不等于删除服务器用户。
+
+如要撤销某个安装，在 SQL Editor 执行下面语句（替换为实际旧设备编号）：
+
+```sql
+delete from public.authorized_devices
+where device_user_id = 'OLD_DEVICE_UUID';
+```
+
+该会话会立即失去数据库权限；已显示在设备内存中的内容在刷新后消失。此操作不删除交易。若只是想恢复访问，批准新设备即可，不需要先撤销旧设备。
 
 ## 阶段 3：iPhone 界面
 
@@ -81,7 +99,7 @@ npm run vapid
 
 生产部署后从 iPhone 主屏幕打开应用，Settings → Notifications & reminders → Enable notifications。只在点击时请求权限。随后点击 **Send a real test notification**。看到“Provider accepted”只说明推送服务接收；只有手机实际显示通知才证明送达。测试每分钟最多一次，daily 每日最多一次。日志显示 pending/accepted/partial/failed；过期订阅 404/410 会自动删除。
 
-`/api/push` 和 `/api/push/test` 需要唯一账号登录及同源请求；服务端按允许的推送提供商验证 endpoint。`/api/cron/reminders` 使用 `CRON_SECRET`，只向配置的单个 owner 发送。密钥仅通过服务器环境读取。点击通知会打开复盘页面。
+`/api/push` 和 `/api/push/test` 需要已批准的设备会话及同源请求；服务端按允许的推送提供商验证 endpoint。`/api/cron/reminders` 使用 `CRON_SECRET`，只向配置的单个 owner 发送。密钥仅通过服务器环境读取。点击通知会打开复盘页面。
 
 ### 每日定时与免费层限制
 
@@ -116,9 +134,9 @@ git push origin main
 
 1. 登录 [Vercel](https://vercel.com/new)，Import Git Repository → `Jian018/Mymoney`，框架 Next.js，根目录仓库根，Node.js 22 或受支持更新版本。
 2. Production 和需要的 Preview 配置上表环境变量。service-role、VAPID 私钥、CRON_SECRET 存为 Secret；`NEXT_PUBLIC_*` 是公开配置。
-3. 部署，确认 Build 成功。生产域名是 `https://…vercel.app`，在 Supabase Authentication → URL Configuration 设置 Site URL；添加需要的本地/生产 redirect URL。当前应用只使用密码登录，没有开放注册流程。
+3. 部署，确认 Build 成功。生产域名是 `https://…vercel.app`。将它设为 Supabase Authentication → URL Configuration 的 Site URL。当前版本不使用邮箱或 OAuth 回调；设备批准期间需要允许匿名会话创建。
 4. 更改环境变量后重新部署。Cron Jobs 中确认每日任务；生产日志中检查 200/503 等状态。不要公开任务 Authorization 值。
-5. HTTPS 生产域名登录，新增真实小额 MYR/SGD 收支，刷新确认持久化，再测试预算、复盘、导出和真实推送。
+5. 从已批准的主屏幕安装打开 HTTPS 生产域名，新增真实小额 MYR/SGD 收支，刷新确认持久化，再测试预算、复盘、导出和真实推送。
 
 直接导入仓库即可使用 Vercel 的 Git 部署，不需要额外付费 API。若没有 Vercel/Supabase 已授权账号或环境，代码完成不代表云服务已配置；必须按上面步骤完成。
 
@@ -126,14 +144,15 @@ git push origin main
 
 1. Safari 打开 HTTPS 生产域名。
 2. Share（分享）→ Add to Home Screen（添加到主屏幕）→ Add（添加）。
-3. 从主屏幕图标启动，检查没有 Safari 地址栏。
-4. 登录后打开通知设置，点击允许，再做推送测试。
+3. 从主屏幕图标启动，检查没有 Safari 地址栏；按阶段 2 批准此安装的 Device ID。
+4. 设备已批准并自动进入后，打开通知设置，点击允许，再做推送测试。
 5. 真机检查 Dynamic Island、Home Indicator、键盘、滚动范围、返回前台复盘提醒，详见 `docs/ACCEPTANCE.md`。
 
 ## 项目结构
 
 ```text
-src/app/                     根布局、登录、错误/加载页
+src/app/                     根布局、设备设置、错误/加载页
+src/app/api/device/          当前设备会话状态（不返回财务数据）
 src/app/api/data/            受保护数据读取（分页读取全部记录）
 src/app/api/records/         校验后的 CRUD、复盘、预算和设置
 src/app/api/push/            订阅/关闭以及真实推送测试
@@ -142,12 +161,12 @@ src/components/             iPhone 界面、弹层、PWA/键盘处理
 src/lib/                    精确金额、校验、Supabase、Web Push
 src/proxy.ts                Supabase Cookie 会话刷新
 public/                     Manifest、SW、离线页、真实图标
-supabase/                   SQL 迁移、唯一 owner 初始化
+supabase/                   两个 SQL 迁移、私人设备批准与 owner 初始化
 scripts/                    图标和 VAPID 密钥生成
 tests/                      金额/校验/CSV 与 PostgreSQL RLS 测试
 docs/                       验收清单和实际验证记录
 ```
 
-全部源文件在仓库中，可直接审阅。依赖采用安装时兼容的版本并提交 `package-lock.json`。[Next.js 安装要求](https://nextjs.org/docs/app/getting-started/installation)、[Supabase SSR](https://supabase.com/docs/guides/auth/server-side/nextjs)、[iOS Web Push](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)可用于核对平台要求。
+全部源文件在仓库中，可直接审阅。依赖采用安装时兼容的版本并提交 `package-lock.json`。[Next.js 安装要求](https://nextjs.org/docs/app/getting-started/installation)、[Supabase SSR](https://supabase.com/docs/guides/auth/server-side/nextjs)、[Supabase 匿名会话](https://supabase.com/docs/guides/auth/auth-anonymous)、[iOS Web Push](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)可用于核对平台要求。
 
 生产就绪必须完成真实 Supabase、生产部署和 iPhone 验收。本地单元/数据库引擎测试不替代真实云端 Auth、PostgREST 或 iOS 测试。

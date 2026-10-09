@@ -25,7 +25,6 @@ import {
   Pencil,
   Trash2,
   RefreshCw,
-  LogOut,
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -51,7 +50,6 @@ import type {
   Kind,
   Transaction,
 } from "@/lib/finance";
-import { browserClient } from "@/lib/supabase/browser";
 import { PwaStatus, ViewportBridge } from "./pwa";
 
 type Tab = "Home" | "Transactions" | "Reports" | "Settings";
@@ -273,7 +271,7 @@ function BudgetCard({
     </button>
   );
 }
-export default function MoneyApp({ email }: { email: string }) {
+export default function MoneyApp({ deviceId }: { deviceId: string }) {
   const [data, setData] = useState<Data | null>(null),
     [tab, setTab] = useState<Tab>("Home"),
     [currency, setCurrency] = useState<Currency>("MYR");
@@ -814,7 +812,7 @@ export default function MoneyApp({ email }: { email: string }) {
                     </span>
                     <div>
                       <h2>{data.profile.display_name}</h2>
-                      <p className="muted small">{email}</p>
+                      <p className="muted small">Private device access</p>
                     </div>
                     <ShieldCheck size={22} />
                   </div>
@@ -883,18 +881,10 @@ export default function MoneyApp({ email }: { email: string }) {
                     </p>
                   </div>
                   <button
-                    className="logout"
-                    onClick={async () => {
-                      try {
-                        const r = await browserClient().auth.signOut();
-                        if (r.error) throw r.error;
-                        window.location.replace("/login");
-                      } catch (e) {
-                        setError((e as Error).message);
-                      }
-                    }}
+                    className="secondary"
+                    onClick={() => setSheet("account")}
                   >
-                    <LogOut size={18} /> Sign out
+                    <ShieldCheck size={18} /> This device is approved
                   </button>
                   <p className="footnote">
                     My Money · v1.0 · Private by design
@@ -1141,8 +1131,8 @@ export default function MoneyApp({ email }: { email: string }) {
                 />
               </label>
               <label>
-                Email
-                <input value={email} readOnly />
+                Device ID
+                <input value={deviceId} readOnly />
               </label>
               <label>
                 Default currency
@@ -1162,8 +1152,9 @@ export default function MoneyApp({ email }: { email: string }) {
                 Save account details
               </button>
               <p className="muted small">
-                Password changes are managed through your private Supabase
-                account.
+                Your device session opens this private ledger automatically. If
+                you clear browser data or reinstall the app, approve the new
+                Device ID in Supabase to restore access to the same records.
               </p>
             </form>
           )}

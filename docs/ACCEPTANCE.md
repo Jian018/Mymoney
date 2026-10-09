@@ -4,11 +4,12 @@
 
 ## Supabase / 权限
 
-- [ ] 关闭公开注册，只手动创建唯一账号。
+- [ ] 已执行 001 和 002 迁移；绑定期间允许匿名会话创建，完成后可关闭新用户注册。
 - [ ] SQL 迁移成功，app_owner UUID 与 ALLOWED_USER_ID 一致。
-- [ ] 正确邮箱密码可以登录；刷新会话保持；退出后 `/` 跳转 `/login`。
-- [ ] 未登录的 `/api/data`、`/api/records`、`/api/push/test` 返回 401。
-- [ ] 在 Supabase 测试另一个用户 JWT，无法读写任意财务表或金额视图。
+- [ ] 没有 `/login` 路由或邮箱密码表单；主屏幕安装首次生成 Device ID，SQL 批准后自动进入；刷新保持会话。
+- [ ] 清除会话后重新批准新 Device ID，仍能访问原有账本；撤销旧安装后不能再访问。
+- [ ] 无设备会话或未批准设备的 `/api/data`、`/api/records`、`/api/push/test` 返回 401。
+- [ ] 使用未批准设备 JWT，无法读写财务表/金额视图，不能自己插入 authorized_devices。
 - [ ] service-role 和 VAPID 私钥不在浏览器 bundle 或 Git 历史中。
 
 ## 财务 / 可靠性

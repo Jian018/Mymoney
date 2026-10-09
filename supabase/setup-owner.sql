@@ -1,3 +1,4 @@
+-- Legacy email/password initialization only. For the current no-login version, use setup-device.sql.
 -- Run AFTER 001_initial.sql and AFTER manually creating the sole Auth user.
 -- Replace the UUID below with Authentication > Users > User UID.
 insert into public.app_owner(singleton,user_id)

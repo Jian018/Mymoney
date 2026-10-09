@@ -1,4 +1,51 @@
 @import "tailwindcss";
+
+.device-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 40px 28px calc(28px + env(safe-area-inset-bottom));
+}
+.device-access .eyebrow {
+  margin: 25px 0 20px;
+  color: #7e8d72;
+}
+.device-access h1 {
+  font-size: 36px;
+  letter-spacing: -1.6px;
+}
+.device-access > .device-scroll > .muted {
+  margin-top: 15px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.device-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 30px;
+}
+.device-badge {
+  display: flex;
+  color: var(--green);
+}
+.device-card .alert {
+  margin-bottom: 0;
+}
+.device-card .small {
+  font-size: 12px;
+  line-height: 1.65;
+}
+.device-card .success-note {
+  line-height: 1.6;
+}
+.device-note {
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
 :root {
   --bg: #f5f6f2;
   --green: #1c4433;

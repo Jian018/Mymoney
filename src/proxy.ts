@@ -28,5 +28,11 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 export const config = {
-  matcher: ["/", "/login", "/api/data", "/api/records", "/api/push/:path*"],
+  matcher: [
+    "/",
+    "/api/device",
+    "/api/data",
+    "/api/records",
+    "/api/push/:path*",
+  ],
 };

@@ -6,9 +6,9 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     checkOrigin(request);
-    const { db, user } = await requireOwner();
+    const { db, ownerId } = await requireOwner();
     const bucket = Math.floor(Date.now() / 60000);
-    return NextResponse.json(await sendPush(db, user.id, "test:" + bucket));
+    return NextResponse.json(await sendPush(db, ownerId, "test:" + bucket));
   } catch (error) {
     return failure(error);
   }
