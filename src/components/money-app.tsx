@@ -51,9 +51,9 @@ import type {
   Transaction,
 } from "@/lib/finance";
 import { PwaStatus, ViewportBridge } from "./pwa";
-import { AutoImport } from "./auto-import";
+import { GmailSync } from "./gmail-sync";
 
-type Tab = "Auto Import" | "Home" | "Transactions" | "Reports" | "Settings";
+type Tab = "Home" | "Transactions" | "Reports" | "Settings";
 type Sheet =
   | "transaction"
   | "checkin"
@@ -281,7 +281,7 @@ function BudgetCard({
 }
 export default function MoneyApp({ deviceId }: { deviceId: string }) {
   const [data, setData] = useState<Data | null>(null),
-    [tab, setTab] = useState<Tab>("Auto Import"),
+    [tab, setTab] = useState<Tab>("Home"),
     [currency, setCurrency] = useState<Currency>("MYR");
   const [sheet, setSheet] = useState<Sheet>(null),
     [editing, setEditing] = useState<Transaction | null>(null),
@@ -378,7 +378,7 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
   ) => {
     if (transaction?.source && transaction.source !== "cash") {
       setToast(
-        `Imported from ${transaction.source}. Provenance is kept in Auto Import; imported entries cannot be changed through Cash entry.`,
+        `Imported from ${transaction.source}. Gmail entries can be reviewed on Dashboard. Historical import evidence remains in the database; imported entries cannot be changed through Cash entry.`,
       );
       return;
     }
@@ -534,17 +534,15 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
         <div className="content" key={tab}>
           <div className="title-row">
             <h1>
-              {tab === "Auto Import"
-                ? "Auto Import."
-                : tab === "Home"
-                  ? `Hello, ${data?.profile.display_name === "My Money" ? "you" : (data?.profile.display_name ?? "you")}.`
-                  : tab === "Reports"
-                    ? "The bigger picture."
-                    : tab === "Transactions"
-                      ? "Your money moves."
-                      : "Make it yours."}
+              {tab === "Home"
+                ? "Dashboard."
+                : tab === "Reports"
+                  ? "The bigger picture."
+                  : tab === "Transactions"
+                    ? "Your money moves."
+                    : "Make it yours."}
             </h1>
-            {tab !== "Settings" && tab !== "Auto Import" && (
+            {tab !== "Settings" && (
               <div className="currency-switch" aria-label="Currency">
                 {(["MYR", "SGD"] as const).map((c) => (
                   <button
@@ -560,15 +558,13 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
             )}
           </div>
           <p className="subtitle">
-            {tab === "Auto Import"
-              ? "Your sources. Your choice. Every time."
-              : tab === "Home"
-                ? "A little awareness goes a long way."
-                : tab === "Transactions"
-                  ? "Every entry, a little more clarity."
-                  : tab === "Reports"
-                    ? "Understand the habits behind the numbers."
-                    : "A private space, on your terms."}
+            {tab === "Home"
+              ? "A little awareness goes a long way."
+              : tab === "Transactions"
+                ? "Every entry, a little more clarity."
+                : tab === "Reports"
+                  ? "Understand the habits behind the numbers."
+                  : "A private space, on your terms."}
           </p>
           {error && (
             <div className="alert" role="alert">
@@ -585,27 +581,9 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
           )}
           {data && (
             <>
-              {(tab === "Home" || tab === "Auto Import") && (
-                <div className="import-home-switch" aria-label="Home screens">
-                  <button
-                    className={tab === "Auto Import" ? "active" : ""}
-                    onClick={() => setTab("Auto Import")}
-                  >
-                    Auto Import
-                  </button>
-                  <button
-                    className={tab === "Home" ? "active" : ""}
-                    onClick={() => setTab("Home")}
-                  >
-                    Money overview
-                  </button>
-                </div>
-              )}
-              {tab === "Auto Import" && (
-                <AutoImport data={data} changed={refresh} />
-              )}
               {tab === "Home" && (
                 <>
+                  <GmailSync data={data} changed={refresh} />
                   <div className="balance-card">
                     <div className="row">
                       <span className="eyebrow">
@@ -946,10 +924,7 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
               key={item.title}
               className={
                 (item.title === "Add" ? "add-tab " : "") +
-                (tab === item.title ||
-                (tab === "Auto Import" && item.title === "Home")
-                  ? "selected"
-                  : "")
+                (tab === item.title ? "selected" : "")
               }
               aria-current={tab === item.title ? "page" : undefined}
               onClick={() =>

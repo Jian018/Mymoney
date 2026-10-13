@@ -1,8 +1,8 @@
 # My Money
 
-## 新增 Auto Import Hub
+## Gmail Expense Sync
 
-已批准的设备默认进入 Auto Import，原有财务功能仍在 Money overview 和底部导航中。已有部署请先在 Supabase SQL Editor 执行 `supabase/migrations/003_auto_import.sql`，然后使用最新 GitHub 部署。银行、钱包和购物平台通过 CSV 模板导入；没有已验证的个人 API 不会显示为已连接。可选 PayPal Business 接入和提供商资格核查见 [AUTO_IMPORT.md](AUTO_IMPORT.md)。不需要 Gmail 登录。
+默认进入 Dashboard，按 Retrieve Email Data 才扫描过去滚动 7 天的财务邮件。应用的 Supabase 设备认证保持不变；Google OAuth 仅授权 Gmail 读取。旧 Auto Import 界面及 provider 代码已移除，历史财务数据保留。迁移、Google Cloud、Vercel 配置、审核和实际 Gmail 验证步骤见 [GMAIL_SYNC.md](GMAIL_SYNC.md)。当前仅完成离线测试，真实 Gmail 同步需要配置并授权后验证。
 
 专为 iPhone 16 Pro Max 竖屏设计的单用户个人财务 PWA。Next.js App Router、React、TypeScript、Tailwind CSS、Lucide、Supabase Auth/PostgreSQL/RLS、标准 Web Push。
 

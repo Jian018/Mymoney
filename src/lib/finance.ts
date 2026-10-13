@@ -14,6 +14,10 @@ export interface Transaction {
   merchant?: string;
   semantic_type?: string;
   refund_of?: string | null;
+  gmail_message_id?: string | null;
+  google_account_id?: string | null;
+  source_reference?: string | null;
+  source_provider?: string | null;
   id: string;
   transaction_type: Kind;
   category_id: string;
@@ -205,6 +209,10 @@ export function transactionCsv(
     "Merchant",
     "Semantic type",
     "Refund of",
+    "Gmail message ID",
+    "Google account ID",
+    "Source reference",
+    "Source provider",
   ];
   const lines = rows.map((t) => [
     t.transaction_date,
@@ -219,6 +227,10 @@ export function transactionCsv(
     t.merchant ?? "",
     t.semantic_type ?? "manual",
     t.refund_of ?? "",
+    t.gmail_message_id ?? "",
+    t.google_account_id ?? "",
+    t.source_reference ?? "",
+    t.source_provider ?? t.source ?? "cash",
   ]);
   return (
     "\uFEFF" +
