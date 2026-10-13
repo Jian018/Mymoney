@@ -51,8 +51,9 @@ import type {
   Transaction,
 } from "@/lib/finance";
 import { PwaStatus, ViewportBridge } from "./pwa";
+import { AutoImport } from "./auto-import";
 
-type Tab = "Home" | "Transactions" | "Reports" | "Settings";
+type Tab = "Auto Import" | "Home" | "Transactions" | "Reports" | "Settings";
 type Sheet =
   | "transaction"
   | "checkin"
@@ -200,6 +201,7 @@ function TransactionRows({
             <span className="transaction-info">
               <strong>{category?.name ?? "Category"}</strong>
               <small>
+                {row.semantic_type === "refund" ? "Refund · " : ""}
                 {row.description || dateLabel(row.transaction_date)}
                 {row.description ? " · " + dateLabel(row.transaction_date) : ""}
               </small>
@@ -207,11 +209,17 @@ function TransactionRows({
             <span
               className={
                 "transaction-value " +
-                (row.transaction_type === "income" ? "positive" : "")
+                (row.transaction_type === "income" ||
+                row.semantic_type === "refund"
+                  ? "positive"
+                  : "")
               }
             >
               <strong>
-                {row.transaction_type === "income" ? "+" : "−"}
+                {row.transaction_type === "income" ||
+                row.semantic_type === "refund"
+                  ? "+"
+                  : "−"}
                 {money(cents(row.amount), row.currency)}
               </strong>
               <small>{row.currency}</small>
@@ -273,7 +281,7 @@ function BudgetCard({
 }
 export default function MoneyApp({ deviceId }: { deviceId: string }) {
   const [data, setData] = useState<Data | null>(null),
-    [tab, setTab] = useState<Tab>("Home"),
+    [tab, setTab] = useState<Tab>("Auto Import"),
     [currency, setCurrency] = useState<Currency>("MYR");
   const [sheet, setSheet] = useState<Sheet>(null),
     [editing, setEditing] = useState<Transaction | null>(null),
@@ -368,6 +376,12 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
     kind: Kind = "expense",
     transaction: Transaction | null = null,
   ) => {
+    if (transaction?.source && transaction.source !== "cash") {
+      setToast(
+        `Imported from ${transaction.source}. Provenance is kept in Auto Import; imported entries cannot be changed through Cash entry.`,
+      );
+      return;
+    }
     draftId.current = crypto.randomUUID();
     setEditing(transaction);
     setEntryKind(transaction?.transaction_type ?? kind);
@@ -413,6 +427,7 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
       entity: "transaction",
       id: editing?.id,
       request_id: editing ? undefined : draftId.current,
+      duplicate_confirmed: form.get("duplicate_confirmed") === "on",
       transaction_type: entryKind,
       amount: String(form.get("amount")),
       currency: String(form.get("currency")) as Currency,
@@ -519,15 +534,17 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
         <div className="content" key={tab}>
           <div className="title-row">
             <h1>
-              {tab === "Home"
-                ? `Hello, ${data?.profile.display_name === "My Money" ? "you" : (data?.profile.display_name ?? "you")}.`
-                : tab === "Reports"
-                  ? "The bigger picture."
-                  : tab === "Transactions"
-                    ? "Your money moves."
-                    : "Make it yours."}
+              {tab === "Auto Import"
+                ? "Auto Import."
+                : tab === "Home"
+                  ? `Hello, ${data?.profile.display_name === "My Money" ? "you" : (data?.profile.display_name ?? "you")}.`
+                  : tab === "Reports"
+                    ? "The bigger picture."
+                    : tab === "Transactions"
+                      ? "Your money moves."
+                      : "Make it yours."}
             </h1>
-            {tab !== "Settings" && (
+            {tab !== "Settings" && tab !== "Auto Import" && (
               <div className="currency-switch" aria-label="Currency">
                 {(["MYR", "SGD"] as const).map((c) => (
                   <button
@@ -543,13 +560,15 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
             )}
           </div>
           <p className="subtitle">
-            {tab === "Home"
-              ? "A little awareness goes a long way."
-              : tab === "Transactions"
-                ? "Every entry, a little more clarity."
-                : tab === "Reports"
-                  ? "Understand the habits behind the numbers."
-                  : "A private space, on your terms."}
+            {tab === "Auto Import"
+              ? "Your sources. Your choice. Every time."
+              : tab === "Home"
+                ? "A little awareness goes a long way."
+                : tab === "Transactions"
+                  ? "Every entry, a little more clarity."
+                  : tab === "Reports"
+                    ? "Understand the habits behind the numbers."
+                    : "A private space, on your terms."}
           </p>
           {error && (
             <div className="alert" role="alert">
@@ -566,6 +585,25 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
           )}
           {data && (
             <>
+              {(tab === "Home" || tab === "Auto Import") && (
+                <div className="import-home-switch" aria-label="Home screens">
+                  <button
+                    className={tab === "Auto Import" ? "active" : ""}
+                    onClick={() => setTab("Auto Import")}
+                  >
+                    Auto Import
+                  </button>
+                  <button
+                    className={tab === "Home" ? "active" : ""}
+                    onClick={() => setTab("Home")}
+                  >
+                    Money overview
+                  </button>
+                </div>
+              )}
+              {tab === "Auto Import" && (
+                <AutoImport data={data} changed={refresh} />
+              )}
               {tab === "Home" && (
                 <>
                   <div className="balance-card">
@@ -908,7 +946,10 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
               key={item.title}
               className={
                 (item.title === "Add" ? "add-tab " : "") +
-                (tab === item.title ? "selected" : "")
+                (tab === item.title ||
+                (tab === "Auto Import" && item.title === "Home")
+                  ? "selected"
+                  : "")
               }
               aria-current={tab === item.title ? "page" : undefined}
               onClick={() =>
@@ -1021,6 +1062,13 @@ export default function MoneyApp({ deviceId }: { deviceId: string }) {
                   placeholder="What was it for?"
                 />
               </label>
+              {!editing && (
+                <label className="checkbox-row">
+                  <input type="checkbox" name="duplicate_confirmed" /> This is a
+                  separate purchase, even if an imported record has the same
+                  date and amount.
+                </label>
+              )}
               <button className="primary" disabled={busy}>
                 {busy
                   ? "Saving…"

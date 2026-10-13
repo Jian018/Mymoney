@@ -33,6 +33,7 @@ export const config = {
     "/api/device",
     "/api/data",
     "/api/records",
+    "/api/imports/:path*",
     "/api/push/:path*",
   ],
 };

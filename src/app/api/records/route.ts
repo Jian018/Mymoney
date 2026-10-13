@@ -74,24 +74,26 @@ export async function POST(request: Request) {
     }
     const { entity, id, ...fields } = record;
     if (entity === "transaction" && !id) {
+      const transaction = record as Extract<
+        typeof record,
+        { entity: "transaction" }
+      >;
       const requestId = record.request_id;
       if (!requestId) throw new Error("A transaction request ID is required.");
-      const inserted = await db
-        .from("transactions")
-        .upsert(
-          { ...fields, user_id: ownerId },
-          { onConflict: "user_id,request_id", ignoreDuplicates: true },
-        );
-      if (inserted.error) throw new Error(inserted.error.message);
-      const saved = await db
-        .from("transactions")
-        .select("id")
-        .eq("user_id", ownerId)
-        .eq("request_id", requestId)
-        .single();
-      if (saved.error) throw new Error(saved.error.message);
-      return NextResponse.json({ id: saved.data.id });
+      const { data, error } = await db.rpc("create_cash", {
+        p_request: requestId,
+        p_kind: transaction.transaction_type,
+        p_category: transaction.category_id,
+        p_amount: transaction.amount,
+        p_currency: transaction.currency,
+        p_date: transaction.transaction_date,
+        p_description: transaction.description,
+        p_confirm: transaction.duplicate_confirmed ?? false,
+      });
+      if (error) throw new Error(error.message);
+      return NextResponse.json({ id: data });
     }
+    if ("duplicate_confirmed" in fields) delete fields.duplicate_confirmed;
     const result = id
       ? await db
           .from(tables[entity])

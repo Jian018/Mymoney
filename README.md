@@ -1,5 +1,9 @@
 # My Money
 
+## 新增 Auto Import Hub
+
+已批准的设备默认进入 Auto Import，原有财务功能仍在 Money overview 和底部导航中。已有部署请先在 Supabase SQL Editor 执行 `supabase/migrations/003_auto_import.sql`，然后使用最新 GitHub 部署。银行、钱包和购物平台通过 CSV 模板导入；没有已验证的个人 API 不会显示为已连接。可选 PayPal Business 接入和提供商资格核查见 [AUTO_IMPORT.md](AUTO_IMPORT.md)。不需要 Gmail 登录。
+
 专为 iPhone 16 Pro Max 竖屏设计的单用户个人财务 PWA。Next.js App Router、React、TypeScript、Tailwind CSS、Lucide、Supabase Auth/PostgreSQL/RLS、标准 Web Push。
 
 **没有演示财务数据，没有模拟数据库成功。** 未配置环境时显示设置提示。写入必须联网；数据库确认前不会显示“已保存”。仅显示一种币种的统计，CSV 保留原币种。

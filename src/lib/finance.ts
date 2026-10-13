@@ -8,6 +8,12 @@ export interface Category {
   transaction_type: Kind;
 }
 export interface Transaction {
+  source?: string;
+  source_transaction_id?: string | null;
+  imported_at?: string | null;
+  merchant?: string;
+  semantic_type?: string;
+  refund_of?: string | null;
   id: string;
   transaction_type: Kind;
   category_id: string;
@@ -116,7 +122,11 @@ export function total(
 ): bigint {
   return rows
     .filter((r) => r.transaction_type === kind && r.currency === currency)
-    .reduce((s, r) => s + cents(r.amount), 0n);
+    .reduce(
+      (s, r) =>
+        s + (r.semantic_type === "refund" ? -cents(r.amount) : cents(r.amount)),
+      0n,
+    );
 }
 export function budgetSpent(b: Budget, rows: Transaction[]): bigint {
   return total(
@@ -189,6 +199,12 @@ export function transactionCsv(
     "Amount",
     "Currency",
     "Description",
+    "Source",
+    "Source transaction ID",
+    "Imported at",
+    "Merchant",
+    "Semantic type",
+    "Refund of",
   ];
   const lines = rows.map((t) => [
     t.transaction_date,
@@ -197,6 +213,12 @@ export function transactionCsv(
     t.amount,
     t.currency,
     t.description,
+    t.source ?? "cash",
+    t.source_transaction_id ?? "",
+    t.imported_at ?? "",
+    t.merchant ?? "",
+    t.semantic_type ?? "manual",
+    t.refund_of ?? "",
   ]);
   return (
     "\uFEFF" +

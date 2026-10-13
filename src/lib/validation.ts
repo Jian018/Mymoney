@@ -24,6 +24,7 @@ export const recordSchema = z.discriminatedUnion("entity", [
     entity: z.literal("transaction"),
     id: uuid.optional(),
     request_id: uuid.optional(),
+    duplicate_confirmed: z.boolean().optional(),
     transaction_type: z.enum(["income", "expense"]),
     category_id: uuid,
     amount,
